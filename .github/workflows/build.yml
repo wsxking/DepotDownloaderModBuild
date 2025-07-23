@@ -1,7 +1,7 @@
 name: Build DepotDownloaderMod
 
 on:
-  workflow_dispatch: # 仅手动触发
+  workflow_dispatch: # Manual trigger only
 
 jobs:
   build:
@@ -45,15 +45,17 @@ jobs:
       run: dotnet publish DepotDownloaderMod/DepotDownloader/DepotDownloaderMod.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./artifacts
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: DepotDownloaderMod
         path: ./artifacts
+        retention-days: 5
 
     - name: Upload modified source files
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: Modified-Sources
         path: |
           DepotDownloaderMod/DepotDownloader/AccountSettingsStore.cs
           DepotDownloaderMod/DepotDownloader/ContentDownloader.cs
+        retention-days: 5
