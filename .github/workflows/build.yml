@@ -1,0 +1,59 @@
+name: Build DepotDownloaderMod
+
+on:
+  workflow_dispatch: # 仅手动触发
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout DepotDownloaderMod
+      uses: actions/checkout@v4
+      with:
+        repository: SteamAutoCracks/DepotDownloaderMod
+        path: DepotDownloaderMod
+
+    - name: Modify source files
+      shell: pwsh
+      run: |
+        # 修改 AccountSettingsStore.cs
+        $accountSettingsFile = "DepotDownloaderMod/DepotDownloader/AccountSettingsStore.cs"
+        (Get-Content $accountSettingsFile) -replace 'IsolatedStorageFile\.GetUserStoreForAssembly\(\)', 'null' | Set-Content $accountSettingsFile
+        (Get-Content $accountSettingsFile) -replace 'IsolatedStorage\.FileExists\(filename\)', 'false' | Set-Content $accountSettingsFile
+        (Get-Content $accountSettingsFile) -replace 'IOException', 'NullReferenceException' | Set-Content $accountSettingsFile
+        
+        # 修改 ContentDownloader.cs
+        $contentDownloaderFile = "DepotDownloaderMod/DepotDownloader/ContentDownloader.cs"
+        (Get-Content $contentDownloaderFile) -replace 'Config\.ManifestFile', 'string.Format("{0}_{1}.manifest", depot.DepotId, lastManifestId)' | Set-Content $contentDownloaderFile
+        
+        # 输出修改后的文件内容以供检查
+        Write-Output "Modified AccountSettingsStore.cs:"
+        Get-Content $accountSettingsFile
+        Write-Output "Modified ContentDownloader.cs:"
+        Get-Content $contentDownloaderFile
+
+    - name: Setup .NET 9 SDK
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore DepotDownloaderMod/DepotDownloader/DepotDownloaderMod.csproj
+
+    - name: Build
+      run: dotnet publish DepotDownloaderMod/DepotDownloader/DepotDownloaderMod.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./artifacts
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: DepotDownloaderMod
+        path: ./artifacts
+
+    - name: Upload modified source files
+      uses: actions/upload-artifact@v3
+      with:
+        name: Modified-Sources
+        path: |
+          DepotDownloaderMod/DepotDownloader/AccountSettingsStore.cs
+          DepotDownloaderMod/DepotDownloader/ContentDownloader.cs
